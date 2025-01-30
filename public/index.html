@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MongoDB Demo</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .message-list {
+        margin-top: 20px;
+      }
+      .message-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        border-bottom: 1px solid #ccc;
+      }
+      .delete-btn {
+        background-color: #ff4444;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        cursor: pointer;
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>MongoDB Message Board</h1>
+
+    <form id="messageForm">
+      <input
+        type="text"
+        id="messageInput"
+        placeholder="Enter your message"
+        required
+      />
+      <button type="submit">Send Message</button>
+    </form>
+
+    <div id="messageList" class="message-list"></div>
+
+    <script>
+      const API_URL = "http://localhost:3001";
+
+      async function loadMessages() {
+        try {
+          const response = await fetch(`${API_URL}/documents`);
+          const messages = await response.json();
+          displayMessages(messages);
+        } catch (error) {
+          console.error("Error loading messages:", error);
+        }
+      }
+
+      function displayMessages(messages) {
+        const messageList = document.getElementById("messageList");
+        messageList.innerHTML = messages
+          .map(
+            (msg) => `
+                <div class="message-item">
+                    <div>
+                        <strong>${new Date(
+                          msg.timestamp
+                        ).toLocaleString()}</strong>
+                        <p>${msg.message}</p>
+                    </div>
+                    <button class="delete-btn" onclick="deleteMessage('${
+                      msg._id
+                    }')">Delete</button>
+                </div>`
+          )
+          .join("");
+      }
+
+      async function deleteMessage(id) {
+        try {
+          await fetch(`${API_URL}/documents/${id}`, {
+            method: "DELETE",
+          });
+          loadMessages();
+        } catch (error) {
+          console.error("Error deleting message:", error);
+        }
+      }
+
+      document
+        .getElementById("messageForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const messageInput = document.getElementById("messageInput");
+          const message = messageInput.value;
+
+          try {
+            await fetch(`${API_URL}/documents`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ message }),
+            });
+            messageInput.value = "";
+            loadMessages();
+          } catch (error) {
+            console.error("Error sending message:", error);
+          }
+        });
+
+      loadMessages();
+    </script>
+  </body>
+</html>
