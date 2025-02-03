@@ -54,6 +54,19 @@ app.delete("/documents/:id", async (req, res) => {
   }
 });
 
+app.put("/documents/:id", async (req, res) => {
+  try {
+    const updatedDoc = await Document.findByIdAndUpdate(
+      req.params.id,
+      { message: req.body.message },
+      { new: true }
+    );
+    res.json(updatedDoc);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });

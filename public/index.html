@@ -4,36 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MongoDB Demo</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 20px;
-      }
-      .message-list {
-        margin-top: 20px;
-      }
-      .message-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px;
-        border-bottom: 1px solid #ccc;
-      }
-      .delete-btn {
-        background-color: #ff4444;
-        color: white;
-        border: none;
-        padding: 5px 10px;
-        cursor: pointer;
-        border-radius: 3px;
-      }
-    </style>
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <h1>MongoDB Message Board</h1>
-
     <form id="messageForm">
       <input
         type="text"
@@ -44,7 +18,10 @@
       <button type="submit">Send Message</button>
     </form>
 
-    <div id="messageList" class="message-list"></div>
+    <div class="flex">
+      <div id="messageList" class="message-list"></div>
+      <div id="currentNote" class="current-note"></div>
+    </div>
 
     <script>
       const API_URL = "http://localhost:3001";
@@ -64,16 +41,34 @@
         messageList.innerHTML = messages
           .map(
             (msg) => `
-                <div class="message-item">
+                <div class="message-item" id="msg-${
+                  msg._id
+                }" onclick="loadCurrentNote('${msg._id}')">
                     <div>
                         <strong>${new Date(
                           msg.timestamp
                         ).toLocaleString()}</strong>
-                        <p>${msg.message}</p>
+                        <p class="message-text">${msg.message}</p>
+                        <div class="edit-form" style="display: none;">
+                            <input type="text" class="edit-input" value="${
+                              msg.message
+                            }">
+                            <button onclick="updateMessage('${
+                              msg._id
+                            }')">Save</button>
+                            <button onclick="cancelEdit('${
+                              msg._id
+                            }')">Cancel</button>
+                        </div>
                     </div>
-                    <button class="delete-btn" onclick="deleteMessage('${
-                      msg._id
-                    }')">Delete</button>
+                    <div class="button-group">
+                        <button class="edit-btn" onclick="showEditForm('${
+                          msg._id
+                        }')">Edit</button>
+                        <button class="delete-btn" onclick="deleteMessage('${
+                          msg._id
+                        }')">Delete</button>
+                    </div>
                 </div>`
           )
           .join("");
@@ -87,6 +82,45 @@
           loadMessages();
         } catch (error) {
           console.error("Error deleting message:", error);
+        }
+      }
+
+      function showEditForm(id) {
+        const msgDiv = document.getElementById(`msg-${id}`);
+        const messageText = msgDiv.querySelector(".message-text");
+        const editForm = msgDiv.querySelector(".edit-form");
+        const editInput = msgDiv.querySelector(".edit-input");
+
+        messageText.style.display = "none";
+        editForm.style.display = "block";
+        editInput.value = messageText.textContent;
+      }
+
+      function cancelEdit(id) {
+        const msgDiv = document.getElementById(`msg-${id}`);
+        const messageText = msgDiv.querySelector(".message-text");
+        const editForm = msgDiv.querySelector(".edit-form");
+
+        messageText.style.display = "block";
+        editForm.style.display = "none";
+      }
+
+      async function updateMessage(id) {
+        const msgDiv = document.getElementById(`msg-${id}`);
+        const editInput = msgDiv.querySelector(".edit-input");
+        const message = editInput.value;
+
+        try {
+          await fetch(`${API_URL}/documents/${id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ message }),
+          });
+          loadMessages();
+        } catch (error) {
+          console.error("Error updating message:", error);
         }
       }
 
@@ -113,6 +147,42 @@
         });
 
       loadMessages();
+
+      async function loadCurrentNote(id) {
+        const currentNote = document.getElementById("currentNote");
+        try {
+          currentNote.innerHTML = '<div class="loading">Loading...</div>';
+          const response = await fetch(`${API_URL}/documents/${id}`);
+          if (!response.ok) {
+            throw new Error("Failed to load note");
+          }
+          const msg = await response.json();
+          currentNote.innerHTML = `
+            <div class="message-item">
+              <div>
+                <strong>${new Date(msg.timestamp).toLocaleString()}</strong>
+                <p class="message-text">${msg.message}</p>
+                <div class="edit-form" style="display: none;">
+                  <input type="text" class="edit-input" value="${msg.message}">
+                  <button onclick="updateMessage('${msg._id}')">Save</button>
+                  <button onclick="cancelEdit('${msg._id}')">Cancel</button>
+                </div>
+              </div>
+              <div class="button-group">
+                <button class="edit-btn" onclick="showEditForm('${
+                  msg._id
+                }')">Edit</button>
+                <button class="delete-btn" onclick="deleteMessage('${
+                  msg._id
+                }')">Delete</button>
+              </div>
+            </div>`;
+        } catch (error) {
+          console.error("Error loading note:", error);
+          currentNote.innerHTML =
+            '<div class="error">Failed to load note. Please try again.</div>';
+        }
+      }
     </script>
   </body>
 </html>
